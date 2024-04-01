@@ -176,11 +176,11 @@ func (c *Client) handleEventMessage(ctx context.Context, event slackevents.Event
 				if ev.Message.ThreadTimeStamp != ev.Message.TimeStamp {
 					// this is thread message
 					ev.ThreadTimeStamp = ev.Message.ThreadTimeStamp
-				} else {
-					// this is the root message
-					ev.ThreadTimeStamp = ev.TimeStamp
 				}
 				ev.TimeStamp = ev.Message.TimeStamp
+			}
+			if ev.ThreadTimeStamp == "" {
+				ev.ThreadTimeStamp = ev.TimeStamp
 			}
 			user, err := c.socketClient.GetUserInfoContext(ctx, ev.User)
 			if err != nil {
