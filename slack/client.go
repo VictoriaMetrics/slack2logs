@@ -178,7 +178,7 @@ func (c *Client) handleEventMessage(ctx context.Context, event slackevents.Event
 					ev.ThreadTimeStamp = ev.Message.ThreadTimeStamp
 				} else {
 					// this is the root message
-					ev.ThreadTimeStamp = ""
+					ev.ThreadTimeStamp = ev.Message.TimeStamp
 				}
 				ev.TimeStamp = ev.Message.TimeStamp
 			}

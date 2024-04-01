@@ -133,9 +133,9 @@ that was discussed in the channel.
 
 Slack2Logs supports searching with multiple filters such as: 
 
-```_stream: {channel_id="CGZF1H6L9", channel_name="general"}```
+```_stream:{channel_id="CGZF1H6L9", channel_name="general"}```
 
-`ts` - timestamp of the first message
+`_time` - time range for the search please check [time range](https://docs.victoriametrics.com/victorialogs/logsql/#time-filter)
 `thread_ts` - timestamp of the thread (this timestamp always the same as the first message timestamp)
 `display_name` - user name in the slack channel
 `_stream` - it is a filter which provides an optimized way to select log entries. For more information please 
@@ -147,12 +147,13 @@ Some of them will be discussed below in examples.
 
 To view all existing messages from a specific channel, simply use the following filter:
 
-```_stream: {channel_id="CGZF1H6L9", channel_name="general"}```
+```_time:120d _stream:{channel_id="CGZF1H6L9", channel_name="general"}```
 
 To use this fileter you can specify one of the parameters `channel_id` or `channel_name`.
 How to get `channel_id` was described above this section.
 
-This filter will return all messages that were received from the specified channel. 
+This filter will return all messages that were received from the specified channel for the last 120 days.
+You can use time range filter to specify the needed time range from the UI.
 By default, VictoriaLogs limits the number of lines to `1000`. 
 So in the response you will able to see only `1000` messages
 
@@ -164,20 +165,20 @@ If you notice duplicated messages, it could indicate that the user edited a mess
 
 To find a message by a keyword, you can refine the query using that word:
 
-```_stream: {channel_id="CGZF1H6L9", channel_name="general"} "I was trying to use `vmrestore` on victoriametrics-cluster helm chart"```
+```_time:120d _stream:{channel_id="CGZF1H6L9", channel_name="general"} "I pass it in the helm values file"```
 
 ### How to get thread for the message
 
 Some messages may have threads. To search for them, use the keyword and timestamps of the messages for thread search:
 
 1. Search for information by keyword with any timestamp for that keyword expression.
-```_stream: {channel_id="CGZF1H6L9",channel_name="general"} "I was trying to use `vmrestore` on victoriametrics-cluster helm chart" and ts:*```
+```_time:120d _stream:{channel_id="CGZF1H6L9", channel_name="general"} "I pass it in the helm values file" and thread_ts:*```
 
 1. Get the response of the initial message in the Slack channel and copy the timestamp value.
 
 Search for all messages related to this thread.
 
-```_stream: {channel_id="CGZF1H6L9",channel_name="general"} (ts:1699441688.343789 or thread_ts:1699441688.343789)```
+```_time:120d _stream:{channel_id="CGZF1H6L9", channel_name="general"} and thread_ts:1705467634.457089```
 
 Note:
 
@@ -187,20 +188,19 @@ If you notice duplicated messages, it could indicate that the user edited a mess
 
 To get message related to specific user you can simply use the next query
 
-```_stream: {channel_id="CGZF1H6L9",channel_name="general"} display_name:"Zakhar Bessarab" "With the given 70K ingestion per minute, for the write path you can start with"```
+```_stream:{channel_id="CGZF1H6L9",channel_name="general"} display_name:"Zakhar Bessarab" "With the given 70K ingestion per minute, for the write path you can start with"```
 
 To check the whole thread related to this message it is needed to do the next steps:
 
-1. Make request with `ts:*` field to get timestamp of this message 
+1. Make request with `thread_ts:*` field to get timestamp of this message 
 
-```_stream: {channel_id="CGZF1H6L9",channel_name="general"} display_name:"Zakhar Bessarab" "With the given 70K ingestion per minute, for the write path you can start with" and (ts:* or thread_ts:*)```
+```_time:120d _stream:{channel_id="CGZF1H6L9", channel_name="general"} "This is correct. You can find some more details on this here" display_name:"Zakhar Bessarab"```
 
-If this message is the start thread message you will see the `thread_ts:-`. 
 If this message is the thread message you will able to see the `thread_ts` fields with value
 
 1. To retrieve all nmessages related this thread just simplify the query to the next example
 
-```_stream: {channel_id="CGZF1H6L9",channel_name="general"} (ts:1695270022.029689 or thread_ts:1695270022.029689)```
+```_time:2023-09-21 _stream: {channel_id="CGZF1H6L9",channel_name="general"} thread_ts:1695270022.029689```
 
 There are some simple search queries was shown for better search of the message. 
 
