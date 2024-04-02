@@ -243,11 +243,6 @@ func (c *Client) collectHistoricalMessages(ctx context.Context) {
 					break
 				}
 				for _, m := range historyContext.Messages {
-					c.threadC <- ThreadRequest{
-						ChannelID: channelID,
-						Timestamp: m.Timestamp,
-					}
-
 					user, err := c.socketClient.GetUserInfoContext(ctx, m.User)
 					if err != nil {
 						log.Printf("error get user %q from message: %s", m.User, err)
@@ -264,14 +259,16 @@ func (c *Client) collectHistoricalMessages(ctx context.Context) {
 						if errors.Is(err, context.Canceled) {
 							return
 						}
-						// there is rate limit error with 10 seconds to wait
-						time.Sleep(time.Second * 10)
 						continue
 					}
 					ts, err := strconv.ParseFloat(m.Timestamp, 64)
 					if err != nil {
 						log.Printf("fail to parse timestamp:%q: %s", m.Timestamp, err)
 						continue
+					}
+					c.threadC <- ThreadRequest{
+						ChannelID: channelID,
+						Timestamp: m.Timestamp,
 					}
 					c.messageC <- Message{
 						Type:                  m.Type,
