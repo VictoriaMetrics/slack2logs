@@ -19,7 +19,10 @@ import (
 	"slack2logs/flagutil"
 )
 
-const historicalRequestLimit = 500
+const (
+	historicalRequestLimit = 500
+	batchSendInterval      = 60 * time.Second
+)
 
 var (
 	botToken          = flag.String("slack.auth.botToken", "", "Bot user OAuth token for Your Workspace")
@@ -39,6 +42,9 @@ type Client struct {
 	messageC          chan Message
 	threadC           chan ThreadRequest
 	listeningChannels map[string]struct{}
+
+	mx    sync.Mutex
+	batch map[string]Message
 }
 
 // Message represents a slack message
@@ -54,6 +60,7 @@ type Message struct {
 	UserID                string `json:"user_id"`
 	DisplayName           string `json:"display_name"`
 	DisplayNameNormalized string `json:"display_name_normalized"`
+	Threads               map[string]Message
 }
 
 // ThreadRequest represents request for getting
@@ -62,6 +69,8 @@ type ThreadRequest struct {
 	ChannelID string
 	Timestamp string
 }
+
+type Messages map[string]Message
 
 func New() *Client {
 	if len(*listeningChannels) == 0 {
@@ -81,6 +90,7 @@ func New() *Client {
 		messageC:          make(chan Message, 1),
 		threadC:           make(chan ThreadRequest, 1),
 		listeningChannels: make(map[string]struct{}, len(*listeningChannels)),
+		batch:             make(map[string]Message),
 	}
 	for _, ch := range *listeningChannels {
 		c.listeningChannels[ch] = struct{}{}
@@ -108,14 +118,27 @@ func (c *Client) RunHistoricalBackfilling(ctx context.Context) error {
 
 // Export sends slack message to the additional service via callback
 func (c *Client) Export(cb func(m Message)) {
+	ticker := time.NewTicker(batchSendInterval)
 	for {
 		select {
-		case m, ok := <-c.messageC:
+		case <-ticker.C:
+			c.mx.Lock()
+			for k, m := range c.batch {
+				// cb(m)
+				messageOutCount.Inc()
+				for m := range m.Threads {
+					// cb(message)
+					messageOutCount.Inc()
+					delete(c.batch, m)
+				}
+				delete(c.batch, k)
+			}
+			c.mx.Unlock()
+		case _, ok := <-c.messageC:
 			if !ok {
+				ticker.Stop()
 				return
 			}
-			cb(m)
-			messageOutCount.Inc()
 		}
 	}
 }
@@ -158,6 +181,7 @@ func (c *Client) handleEvents(ctx context.Context) {
 }
 
 func (c *Client) handleEventMessage(ctx context.Context, event slackevents.EventsAPIEvent) error {
+
 	switch event.Type {
 	// First we check if this is an CallbackEvent
 	case slackevents.CallbackEvent:
@@ -170,6 +194,9 @@ func (c *Client) handleEventMessage(ctx context.Context, event slackevents.Event
 			if _, ok := c.listeningChannels[ev.Channel]; !ok {
 				return fmt.Errorf("got message from unsupported channel id: %s", ev.Channel)
 			}
+			log.Printf("EVENT => : %#v \n", ev)
+			log.Println()
+			log.Println("====================================")
 			if ev.SubType == slack.MsgSubTypeMessageChanged {
 				ev.User = ev.Message.User
 				ev.Text = ev.Message.Text
@@ -179,8 +206,9 @@ func (c *Client) handleEventMessage(ctx context.Context, event slackevents.Event
 				}
 				ev.TimeStamp = ev.Message.TimeStamp
 			}
+			var threadTS string
 			if ev.ThreadTimeStamp == "" {
-				ev.ThreadTimeStamp = ev.TimeStamp
+				threadTS = ev.TimeStamp
 			}
 			user, err := c.socketClient.GetUserInfoContext(ctx, ev.User)
 			if err != nil {
@@ -196,11 +224,12 @@ func (c *Client) handleEventMessage(ctx context.Context, event slackevents.Event
 			if err != nil {
 				return fmt.Errorf("fail to parse timestamp:%q: %s", ev.TimeStamp, err)
 			}
-			c.messageC <- Message{
+
+			m := Message{
 				Type:                  ev.Type,
 				User:                  ev.User,
 				Text:                  ev.Text,
-				ThreadTimeStamp:       ev.ThreadTimeStamp,
+				ThreadTimeStamp:       threadTS,
 				TimeStamp:             time.Unix(int64(ts), 0).Format(time.RFC3339),
 				ChannelID:             ev.Channel,
 				ChannelName:           ch.Name,
@@ -208,6 +237,31 @@ func (c *Client) handleEventMessage(ctx context.Context, event slackevents.Event
 				DisplayName:           user.Profile.DisplayName,
 				DisplayNameNormalized: user.Profile.DisplayNameNormalized,
 			}
+
+			// if the message is a thread message
+			c.mx.Lock()
+			if prevMsg, ok := c.batch[ev.TimeStamp]; !ok {
+				if msg, ok := c.batch[ev.ThreadTimeStamp]; ok && ev.ThreadTimeStamp != "" {
+					// if the message is a thread message
+					if msg.Threads == nil {
+						msg.Threads = make(map[string]Message)
+					} else {
+						msg.Threads[ev.TimeStamp] = m
+					}
+					c.batch[ev.ThreadTimeStamp] = msg
+				} else {
+					// this is a new message
+					m.Threads = make(map[string]Message)
+					c.batch[ev.TimeStamp] = m
+				}
+			} else {
+				// this is a message that was edited
+				if prevMsg.Threads != nil {
+					m.Threads = prevMsg.Threads
+				}
+				c.batch[ev.TimeStamp] = m
+			}
+			c.mx.Unlock()
 		default:
 			return errors.New("got unsupported inner event type")
 		}
