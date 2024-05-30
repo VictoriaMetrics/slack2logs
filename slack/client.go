@@ -308,6 +308,10 @@ func (c *Client) collectHistoricalMessages(ctx context.Context) {
 						ChannelID: channelID,
 						Timestamp: m.Timestamp,
 					}
+
+					if m.ThreadTimestamp == "" {
+						m.ThreadTimestamp = m.Timestamp
+					}
 					c.messageC <- Message{
 						Type:                  m.Type,
 						User:                  m.User,
