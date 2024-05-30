@@ -16,7 +16,7 @@ type Importer interface {
 // Exporter defines exporter interface
 // which should be implemented for each exporter
 type Exporter interface {
-	Export(func(slack.Message))
+	Export(context.Context, func(slack.Message))
 }
 
 // Processor defines object with exporter and importer
@@ -46,7 +46,7 @@ func New(exporter Exporter, importer Importer) *Processor {
 
 // Run starts export import process
 func (p *Processor) Run(ctx context.Context) {
-	p.exporter.Export(func(m slack.Message) {
+	p.exporter.Export(ctx, func(m slack.Message) {
 		logMsg := LogMessage(m)
 		if err := p.importer.Import(ctx, logMsg); err != nil {
 			log.Printf("error import message to the importer: %s", err)

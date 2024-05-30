@@ -21,7 +21,7 @@ import (
 
 const (
 	historicalRequestLimit = 500
-	batchSendInterval      = 900 * time.Second // 15 minutes
+	batchSendInterval      = 30 * time.Second // 15 minutes
 )
 
 var (
@@ -116,28 +116,39 @@ func (c *Client) RunHistoricalBackfilling(ctx context.Context) error {
 }
 
 // Export sends slack message to the additional service via callback
-func (c *Client) Export(cb func(m Message)) {
+func (c *Client) Export(ctx context.Context, cb func(m Message)) {
 	ticker := time.NewTicker(batchSendInterval)
+	defer ticker.Stop()
 	for {
 		select {
+		case <-ctx.Done():
+			c.flush(cb)
+			return
 		case <-ticker.C:
-			log.Printf("sending batch of %d messages", len(c.batch))
-			c.mx.Lock()
-			for _, m := range c.batch {
-				cb(m)
-			}
-			messageOutCount.Add(len(c.batch))
-			clear(c.batch)
-			c.mx.Unlock()
-			log.Printf("batch flushed successfuly")
+			c.flush(cb)
 		case m, ok := <-c.messageC:
 			if !ok {
-				ticker.Stop()
 				return
 			}
 			cb(m)
+			messageOutCount.Inc()
 		}
 	}
+}
+
+func (c *Client) flush(cb func(m Message)) {
+	if len(c.batch) == 0 {
+		return
+	}
+	log.Printf("sending batch of %d messages", len(c.batch))
+	c.mx.Lock()
+	for _, m := range c.batch {
+		cb(m)
+	}
+	messageOutCount.Add(len(c.batch))
+	clear(c.batch)
+	c.mx.Unlock()
+	log.Printf("batch flushed successfuly")
 }
 
 func (c *Client) handleEvents(ctx context.Context) {
