@@ -47,18 +47,7 @@ func New(exporter Exporter, importer Importer) *Processor {
 // Run starts export import process
 func (p *Processor) Run(ctx context.Context) {
 	p.exporter.Export(func(m slack.Message) {
-		logMsg := LogMessage{
-			Type:                  m.Type,
-			User:                  m.User,
-			Text:                  m.Text,
-			ThreadTimeStamp:       m.ThreadTimeStamp,
-			TimeStamp:             m.TimeStamp,
-			ChannelID:             m.ChannelID,
-			ChannelName:           m.ChannelName,
-			UserID:                m.UserID,
-			DisplayName:           m.DisplayName,
-			DisplayNameNormalized: m.DisplayNameNormalized,
-		}
+		logMsg := LogMessage(m)
 		if err := p.importer.Import(ctx, logMsg); err != nil {
 			log.Printf("error import message to the importer: %s", err)
 		}

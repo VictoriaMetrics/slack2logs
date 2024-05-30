@@ -21,7 +21,7 @@ import (
 
 const (
 	historicalRequestLimit = 500
-	batchSendInterval      = 60 * time.Second
+	batchSendInterval      = 30 * time.Minute
 )
 
 var (
@@ -60,7 +60,6 @@ type Message struct {
 	UserID                string `json:"user_id"`
 	DisplayName           string `json:"display_name"`
 	DisplayNameNormalized string `json:"display_name_normalized"`
-	Threads               map[string]Message
 }
 
 // ThreadRequest represents request for getting
@@ -124,21 +123,17 @@ func (c *Client) Export(cb func(m Message)) {
 		case <-ticker.C:
 			c.mx.Lock()
 			for k, m := range c.batch {
-				// cb(m)
+				cb(m)
 				messageOutCount.Inc()
-				for m := range m.Threads {
-					// cb(message)
-					messageOutCount.Inc()
-					delete(c.batch, m)
-				}
 				delete(c.batch, k)
 			}
 			c.mx.Unlock()
-		case _, ok := <-c.messageC:
+		case m, ok := <-c.messageC:
 			if !ok {
 				ticker.Stop()
 				return
 			}
+			cb(m)
 		}
 	}
 }
@@ -194,9 +189,6 @@ func (c *Client) handleEventMessage(ctx context.Context, event slackevents.Event
 			if _, ok := c.listeningChannels[ev.Channel]; !ok {
 				return fmt.Errorf("got message from unsupported channel id: %s", ev.Channel)
 			}
-			log.Printf("EVENT => : %#v \n", ev)
-			log.Println()
-			log.Println("====================================")
 			if ev.SubType == slack.MsgSubTypeMessageChanged {
 				ev.User = ev.Message.User
 				ev.Text = ev.Message.Text
@@ -204,9 +196,9 @@ func (c *Client) handleEventMessage(ctx context.Context, event slackevents.Event
 					// this is thread message
 					ev.ThreadTimeStamp = ev.Message.ThreadTimeStamp
 				}
-				ev.TimeStamp = ev.Message.TimeStamp
 			}
-			var threadTS string
+
+			threadTS := ev.ThreadTimeStamp
 			if ev.ThreadTimeStamp == "" {
 				threadTS = ev.TimeStamp
 			}
@@ -238,29 +230,18 @@ func (c *Client) handleEventMessage(ctx context.Context, event slackevents.Event
 				DisplayNameNormalized: user.Profile.DisplayNameNormalized,
 			}
 
-			// if the message is a thread message
-			c.mx.Lock()
-			if prevMsg, ok := c.batch[ev.TimeStamp]; !ok {
-				if msg, ok := c.batch[ev.ThreadTimeStamp]; ok && ev.ThreadTimeStamp != "" {
-					// if the message is a thread message
-					if msg.Threads == nil {
-						msg.Threads = make(map[string]Message)
-					} else {
-						msg.Threads[ev.TimeStamp] = m
-					}
-					c.batch[ev.ThreadTimeStamp] = msg
+			timestamp := ev.TimeStamp
+			if ev.SubType == slack.MsgSubTypeMessageChanged {
+				timestamp = ev.PreviousMessage.TimeStamp
+				if ev.PreviousMessage.ThreadTimeStamp != "" {
+					m.ThreadTimeStamp = ev.PreviousMessage.ThreadTimeStamp
 				} else {
-					// this is a new message
-					m.Threads = make(map[string]Message)
-					c.batch[ev.TimeStamp] = m
+					m.ThreadTimeStamp = ev.PreviousMessage.TimeStamp
 				}
-			} else {
-				// this is a message that was edited
-				if prevMsg.Threads != nil {
-					m.Threads = prevMsg.Threads
-				}
-				c.batch[ev.TimeStamp] = m
 			}
+
+			c.mx.Lock()
+			c.batch[timestamp] = m
 			c.mx.Unlock()
 		default:
 			return errors.New("got unsupported inner event type")
