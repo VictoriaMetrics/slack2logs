@@ -21,7 +21,7 @@ import (
 
 const (
 	historicalRequestLimit = 500
-	batchSendInterval      = 30 * time.Minute
+	batchSendInterval      = 900 * time.Second // 15 minutes
 )
 
 var (
@@ -230,9 +230,7 @@ func (c *Client) handleEventMessage(ctx context.Context, event slackevents.Event
 				DisplayNameNormalized: user.Profile.DisplayNameNormalized,
 			}
 
-			timestamp := ev.TimeStamp
 			if ev.SubType == slack.MsgSubTypeMessageChanged {
-				timestamp = ev.PreviousMessage.TimeStamp
 				if ev.PreviousMessage.ThreadTimeStamp != "" {
 					m.ThreadTimeStamp = ev.PreviousMessage.ThreadTimeStamp
 				} else {
@@ -240,6 +238,7 @@ func (c *Client) handleEventMessage(ctx context.Context, event slackevents.Event
 				}
 			}
 
+			timestamp := getBatchTimestamp(ev)
 			c.mx.Lock()
 			c.batch[timestamp] = m
 			c.mx.Unlock()
@@ -386,4 +385,12 @@ func (c *Client) collectThreadMessages(ctx context.Context) {
 			}
 		}
 	}
+}
+
+func getBatchTimestamp(ev *slackevents.MessageEvent) string {
+	timestamp := ev.TimeStamp
+	if ev.SubType == slack.MsgSubTypeMessageChanged {
+		timestamp = ev.PreviousMessage.TimeStamp
+	}
+	return timestamp
 }
