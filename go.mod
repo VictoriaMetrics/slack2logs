@@ -1,11 +1,12 @@
 module slack2logs
 
-go 1.21.1
+go 1.22
 
 require (
 	github.com/VictoriaMetrics/metrics v1.24.0
 	github.com/slack-go/slack v0.12.3
 	github.com/valyala/fasttemplate v1.2.2
+	golang.org/x/exp v0.0.0-20240529005216-23cca8864a10
 )
 
 require (

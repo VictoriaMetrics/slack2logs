@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/exp/maps"
+
 	"github.com/VictoriaMetrics/metrics"
 	"github.com/slack-go/slack"
 	"github.com/slack-go/slack/slackevents"
@@ -21,7 +23,7 @@ import (
 
 const (
 	historicalRequestLimit = 500
-	batchSendInterval      = 900 * time.Second // 15 minutes
+	batchSendInterval      = 10 * time.Second // 15 minutes
 )
 
 var (
@@ -121,13 +123,15 @@ func (c *Client) Export(cb func(m Message)) {
 	for {
 		select {
 		case <-ticker.C:
+			log.Printf("sending batch of %d messages", len(c.batch))
 			c.mx.Lock()
-			for k, m := range c.batch {
+			for _, m := range c.batch {
 				cb(m)
 				messageOutCount.Inc()
-				delete(c.batch, k)
 			}
+			maps.Clear(c.batch)
 			c.mx.Unlock()
+			log.Printf("batch was sent and cleared")
 		case m, ok := <-c.messageC:
 			if !ok {
 				ticker.Stop()
