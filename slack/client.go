@@ -23,7 +23,7 @@ import (
 
 const (
 	historicalRequestLimit = 500
-	batchSendInterval      = 10 * time.Second // 15 minutes
+	batchSendInterval      = 900 * time.Second // 15 minutes
 )
 
 var (
