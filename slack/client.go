@@ -11,8 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/exp/maps"
-
 	"github.com/VictoriaMetrics/metrics"
 	"github.com/slack-go/slack"
 	"github.com/slack-go/slack/slackevents"
@@ -46,7 +44,7 @@ type Client struct {
 	listeningChannels map[string]struct{}
 
 	mx    sync.Mutex
-	batch map[string]Message
+	batch Messages
 }
 
 // Message represents a slack message
@@ -91,7 +89,7 @@ func New() *Client {
 		messageC:          make(chan Message, 1),
 		threadC:           make(chan ThreadRequest, 1),
 		listeningChannels: make(map[string]struct{}, len(*listeningChannels)),
-		batch:             make(map[string]Message),
+		batch:             make(Messages),
 	}
 	for _, ch := range *listeningChannels {
 		c.listeningChannels[ch] = struct{}{}
@@ -127,11 +125,11 @@ func (c *Client) Export(cb func(m Message)) {
 			c.mx.Lock()
 			for _, m := range c.batch {
 				cb(m)
-				messageOutCount.Inc()
 			}
-			maps.Clear(c.batch)
+			messageOutCount.Add(len(c.batch))
+			clear(c.batch)
 			c.mx.Unlock()
-			log.Printf("batch was sent and cleared")
+			log.Printf("batch flushed successfuly")
 		case m, ok := <-c.messageC:
 			if !ok {
 				ticker.Stop()
