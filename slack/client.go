@@ -118,7 +118,6 @@ func (c *Client) RunHistoricalBackfilling(ctx context.Context) error {
 // Export sends slack message to the additional service via callback
 func (c *Client) Export(ctx context.Context, cb func(m Message)) {
 	ticker := time.NewTicker(*batchFlushInterval)
-	log.Printf("flush interval: %s", *batchFlushInterval)
 	defer ticker.Stop()
 	for {
 		select {
