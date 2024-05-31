@@ -21,13 +21,13 @@ import (
 
 const (
 	historicalRequestLimit = 500
-	batchSendInterval      = 30 * time.Second // 15 minutes
 )
 
 var (
-	botToken          = flag.String("slack.auth.botToken", "", "Bot user OAuth token for Your Workspace")
-	appToken          = flag.String("slack.auth.appToken", "", "App-level tokens allow your app to use platform features that apply to multiple (or all) installations")
-	listeningChannels = flagutil.NewArrayString("slack.channels", "Channels ids from slack to listen messages")
+	botToken           = flag.String("slack.auth.botToken", "", "Bot user OAuth token for Your Workspace")
+	appToken           = flag.String("slack.auth.appToken", "", "App-level tokens allow your app to use platform features that apply to multiple (or all) installations")
+	listeningChannels  = flagutil.NewArrayString("slack.channels", "Channels ids from slack to listen messages")
+	batchFlushInterval = flag.Duration("slack.batchFlushInterval", 900*time.Second, "Interval for flushing batch of messages to the additional service")
 )
 
 var (
@@ -117,7 +117,8 @@ func (c *Client) RunHistoricalBackfilling(ctx context.Context) error {
 
 // Export sends slack message to the additional service via callback
 func (c *Client) Export(ctx context.Context, cb func(m Message)) {
-	ticker := time.NewTicker(batchSendInterval)
+	ticker := time.NewTicker(*batchFlushInterval)
+	log.Printf("flush interval: %s", *batchFlushInterval)
 	defer ticker.Stop()
 	for {
 		select {
