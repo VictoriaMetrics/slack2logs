@@ -159,7 +159,11 @@ So in the response you will able to see only `1000` messages
 
 _Note:_
 
-If you notice duplicated messages, it could indicate that the user edited a message that was originally written earlier.
+All Slack messages are collected to the batches and sent to the storage via the interval of time. 
+So this logic should prevent duplicated messages when the user edits the message. 
+But if the message is edited after the time limit, it can appear as duplicate.
+Time interval for new messages to be appeared in the storage is `15 minute`.
+
 
 ### How to find messages by specific keywords of part of the message
 

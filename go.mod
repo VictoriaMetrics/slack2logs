@@ -1,6 +1,6 @@
 module slack2logs
 
-go 1.21.1
+go 1.22
 
 require (
 	github.com/VictoriaMetrics/metrics v1.24.0
@@ -9,6 +9,7 @@ require (
 )
 
 require (
+	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fastrand v1.1.0 // indirect
