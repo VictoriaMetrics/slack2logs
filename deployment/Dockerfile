@@ -6,5 +6,5 @@ RUN apk --update --no-cache add ca-certificates
 FROM $root_image
 COPY --from=certs /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 EXPOSE 8420
-ENTRYPOINT ["/slack2logs-amd64-prod"]
-COPY slack2logs-amd64-prod ./slack2logs-amd64-prod
+ENTRYPOINT ["/slack2logs-linux-amd64-prod"]
+COPY slack2logs-linux-amd64-prod ./slack2logs-linux-amd64-prod

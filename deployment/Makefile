@@ -42,6 +42,7 @@ app-via-docker: package-builder
 		--mount type=bind,src="$(shell pwd)/gocache-for-docker",dst=/gocache \
 		--env GOCACHE=/gocache \
 		--env GO111MODULE=on \
+		$(DOCKER_OPTS) \
 		$(BUILDER_IMAGE) \
 		go build $(RACE) -mod=vendor -trimpath -buildvcs=false \
 			-ldflags "-extldflags '-static' $(GO_BUILDINFO)" \
@@ -72,7 +73,7 @@ app-via-docker-goarch:
 	$(MAKE) app-via-docker
 
 publish-via-docker: \
-	app-via-docker-amd64
+	app-via-docker-linux-amd64
 	docker buildx build \
 		--platform=linux/amd64 \
 		--build-arg certs_image=$(CERTS_IMAGE) \
@@ -88,6 +89,9 @@ publish-via-docker: \
 
 app-via-docker-darwin-amd64:
 	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 $(MAKE) app-via-docker-goos-goarch
+
+app-via-docker-linux-amd64:
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(MAKE) app-via-docker-goos-goarch
 
 app-via-docker-darwin-arm64:
 	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 $(MAKE) app-via-docker-goos-goarch
