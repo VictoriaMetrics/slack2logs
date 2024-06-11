@@ -23,7 +23,7 @@ func (m *mockExporter) Export(ctx context.Context, processMessage func(Message))
 	m.exportFunc(ctx, processMessage)
 }
 
-// Test for Transporter.Run method
+// Test for Transport.Run method
 func TestProcessorRun(t *testing.T) {
 	mockImp := &mockImporter{
 		importFunc: func(ctx context.Context, message Message) error {

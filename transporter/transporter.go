@@ -32,14 +32,14 @@ type Exporter interface {
 	Export(context.Context, func(Message))
 }
 
-// Transporter defines object with exporter and importer
-type Transporter struct {
+// Transport defines object with exporter and importer
+type Transport struct {
 	exporter Exporter
 	importer Importer
 }
 
 // Run starts export import process
-func (p *Transporter) Run(ctx context.Context) {
+func (p *Transport) Run(ctx context.Context) {
 	p.exporter.Export(ctx, func(m Message) {
 		if err := p.importer.Import(ctx, m); err != nil {
 			log.Printf("error import message to the importer: %s", err)
@@ -47,7 +47,7 @@ func (p *Transporter) Run(ctx context.Context) {
 	})
 }
 
-func New(exporter Exporter, importer Importer) *Transporter {
-	p := Transporter{exporter: exporter, importer: importer}
+func New(exporter Exporter, importer Importer) *Transport {
+	p := Transport{exporter: exporter, importer: importer}
 	return &p
 }
