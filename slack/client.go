@@ -32,7 +32,7 @@ var (
 	botToken           = flag.String("slack.auth.botToken", "", "Bot user OAuth token for Your Workspace")
 	appToken           = flag.String("slack.auth.appToken", "", "App-level tokens allow your app to use platform features that apply to multiple (or all) installations")
 	listeningChannels  = flagutil.NewArrayString("slack.channels", "Channels ids from slack to listen messages")
-	batchFlushInterval = flag.Duration("slack.batchFlushInterval", 10*time.Second, "Interval for flushing batch of messages to the additional service")
+	batchFlushInterval = flag.Duration("slack.batchFlushInterval", 900*time.Second, "Interval for flushing batch of messages to the additional service")
 )
 
 var (
