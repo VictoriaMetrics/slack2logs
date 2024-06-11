@@ -55,7 +55,7 @@ type Client struct {
 // Message represents a slack message
 // which would be sent to the additional service
 type Message struct {
-	ID                    string `json:"id"`
+	ThreadID              string `json:"thread_id"`
 	Type                  string `json:"type"`
 	User                  string `json:"user"`
 	Text                  string `json:"text"`
@@ -243,7 +243,7 @@ func (c *Client) handleEventMessage(ctx context.Context, event slackevents.Event
 			id := generateMessageID(threadTS)
 
 			m := Message{
-				ID:                    id,
+				ThreadID:              id,
 				Type:                  ev.Type,
 				User:                  ev.User,
 				Text:                  ev.Text,
