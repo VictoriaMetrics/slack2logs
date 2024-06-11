@@ -25,6 +25,7 @@ import (
 const (
 	historicalRequestLimit = 500
 	joinedChannelMessage   = "has joined the channel"
+	lengthID               = 10
 )
 
 var (
@@ -428,5 +429,7 @@ func generateMessageID(threadTs string) string {
 	hash := sha256.New()
 	hash.Write([]byte(threadTs))
 	hashBytes := hash.Sum(nil)
-	return hex.EncodeToString(hashBytes)
+	encoded := hex.EncodeToString(hashBytes)
+	id := encoded[:lengthID]
+	return id
 }
