@@ -37,8 +37,8 @@ var (
 	handleMessageErrors   = metrics.GetOrCreateCounter(`vm_slack2logs_delivery_errors_total{destination="vmlogs"}`)
 )
 
-// LogMessage represents data for storing in the logs
-type LogMessage struct {
+// Message represents data for storing in the logs
+type Message struct {
 	ThreadID              string `json:"thread_id"`
 	Type                  string `json:"type"`
 	User                  string `json:"user"`
@@ -94,7 +94,7 @@ func New() (*Client, error) {
 
 // Import make request to the VictoriaLogs server with
 // given message
-func (c *Client) Import(ctx context.Context, message LogMessage) error {
+func (c *Client) Import(ctx context.Context, message Message) error {
 	messagesDeliveryCount.Inc()
 	var buf bytes.Buffer
 	err := json.NewEncoder(&buf).Encode(message)

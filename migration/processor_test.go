@@ -11,10 +11,10 @@ import (
 
 // Mock implementations of Importer and Exporter for testing purposes
 type mockImporter struct {
-	importFunc func(ctx context.Context, message vmlogs.LogMessage) error
+	importFunc func(ctx context.Context, message vmlogs.Message) error
 }
 
-func (m *mockImporter) Import(ctx context.Context, message vmlogs.LogMessage) error {
+func (m *mockImporter) Import(ctx context.Context, message vmlogs.Message) error {
 	return m.importFunc(ctx, message)
 }
 
@@ -29,7 +29,7 @@ func (m *mockExporter) Export(ctx context.Context, processMessage func(slack.Mes
 // Test for Processor.Run method
 func TestProcessorRun(t *testing.T) {
 	mockImp := &mockImporter{
-		importFunc: func(ctx context.Context, message vmlogs.LogMessage) error {
+		importFunc: func(ctx context.Context, message vmlogs.Message) error {
 			if message.Text == "test message" {
 				return nil
 			}
@@ -50,7 +50,7 @@ func TestProcessorRun(t *testing.T) {
 // Test for Importer and Exporter interaction
 func TestProcessorImportError(t *testing.T) {
 	mockImp := &mockImporter{
-		importFunc: func(ctx context.Context, message vmlogs.LogMessage) error {
+		importFunc: func(ctx context.Context, message vmlogs.Message) error {
 			return errors.New("import error")
 		},
 	}

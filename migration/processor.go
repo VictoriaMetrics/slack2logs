@@ -11,7 +11,7 @@ import (
 // Importer defines importer interface
 // which should be implemented for each importer
 type Importer interface {
-	Import(ctx context.Context, message vmlogs.LogMessage) error
+	Import(ctx context.Context, message vmlogs.Message) error
 }
 
 // Exporter defines exporter interface
@@ -29,7 +29,7 @@ type Processor struct {
 // Run starts export import process
 func (p *Processor) Run(ctx context.Context) {
 	p.exporter.Export(ctx, func(m slack.Message) {
-		if err := p.importer.Import(ctx, vmlogs.LogMessage(m)); err != nil {
+		if err := p.importer.Import(ctx, vmlogs.Message(m)); err != nil {
 			log.Printf("error import message to the importer: %s", err)
 		}
 	})
