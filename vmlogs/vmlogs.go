@@ -16,7 +16,6 @@ import (
 	"github.com/VictoriaMetrics/metrics"
 
 	"slack2logs/auth"
-	"slack2logs/importer"
 )
 
 const jsonLinePath = "insert/jsonline"
@@ -37,6 +36,21 @@ var (
 	messagesDeliveryCount = metrics.GetOrCreateCounter(`vm_slack2logs_messages_delivery_total{destination="vmlogs"}`)
 	handleMessageErrors   = metrics.GetOrCreateCounter(`vm_slack2logs_delivery_errors_total{destination="vmlogs"}`)
 )
+
+// LogMessage represents data for storing in the logs
+type LogMessage struct {
+	ThreadID              string `json:"thread_id"`
+	Type                  string `json:"type"`
+	User                  string `json:"user"`
+	Text                  string `json:"text"`
+	ThreadTimeStamp       string `json:"thread_ts"`
+	TimeStamp             string `json:"ts"`
+	ChannelID             string `json:"channel_id"`
+	ChannelName           string `json:"channel_name"`
+	UserID                string `json:"user_id"`
+	DisplayName           string `json:"display_name"`
+	DisplayNameNormalized string `json:"display_name_normalized"`
+}
 
 // Client is an HTTP client for importing
 // logs via jsonline protocol.
@@ -80,7 +94,7 @@ func New() (*Client, error) {
 
 // Import make request to the VictoriaLogs server with
 // given message
-func (c *Client) Import(ctx context.Context, message importer.LogMessage) error {
+func (c *Client) Import(ctx context.Context, message LogMessage) error {
 	messagesDeliveryCount.Inc()
 	var buf bytes.Buffer
 	err := json.NewEncoder(&buf).Encode(message)
