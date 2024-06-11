@@ -11,8 +11,8 @@ import (
 	"syscall"
 	"time"
 
-	"slack2logs/importer"
 	"slack2logs/slack"
+	"slack2logs/transporter"
 	"slack2logs/vmlogs"
 )
 
@@ -40,7 +40,7 @@ func main() {
 		log.Fatalf("error initialize VictoriaLogs client: %s", err)
 	}
 
-	processor := importer.New(slackClient, logs)
+	trns := transporter.New(slackClient, logs)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
@@ -51,7 +51,7 @@ func main() {
 		cancel()
 	}()
 
-	processor.Run(ctx)
+	trns.Run(ctx)
 
 	log.Println("Process stopped successfully")
 	log.Printf("Elapsed time: %s", time.Since(startTime))
