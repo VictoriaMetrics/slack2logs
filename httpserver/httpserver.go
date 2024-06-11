@@ -87,7 +87,7 @@ func handleHealth() http.Handler {
 }
 
 func respondWithError(w http.ResponseWriter, r *http.Request, statusCode int, err error) bool {
-	fmt.Errorf(err.Error(), r.URL.Path)
+	log.Printf("error - %s, path - %s", err, r.URL.Path)
 	w.WriteHeader(statusCode)
 	_, _ = w.Write([]byte(err.Error()))
 	return true

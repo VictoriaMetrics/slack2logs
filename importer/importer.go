@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"slack2logs/slack"
+	"strings"
 )
 
 // Importer defines importer interface
@@ -48,9 +49,16 @@ func New(exporter Exporter, importer Importer) *Processor {
 // Run starts export import process
 func (p *Processor) Run(ctx context.Context) {
 	p.exporter.Export(ctx, func(m slack.Message) {
-		logMsg := LogMessage(m)
-		if err := p.importer.Import(ctx, logMsg); err != nil {
+		if filterOutLogMessage(m.Text) {
+			return
+		}
+		if err := p.importer.Import(ctx, LogMessage(m)); err != nil {
 			log.Printf("error import message to the importer: %s", err)
 		}
 	})
+}
+
+func filterOutLogMessage(msg string) bool {
+	// filter out "user joined Slack channel messages", msg example "<@U0787V2AW9W> has joined the channel"
+	return strings.HasSuffix(msg, "> has joined the channel")
 }
