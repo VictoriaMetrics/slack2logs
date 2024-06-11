@@ -27,6 +27,7 @@ type Processor struct {
 
 // LogMessage represents data for storing in the logs
 type LogMessage struct {
+	ID                    string `json:"id"`
 	Type                  string `json:"type"`
 	User                  string `json:"user"`
 	Text                  string `json:"text"`

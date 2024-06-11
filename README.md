@@ -180,13 +180,15 @@ Some messages may have threads. To search for them, use the keyword and timestam
 
 1. Get the response of the initial message in the Slack channel and copy the timestamp value.
 
-Search for all messages related to this thread.
+1. Search for all messages related to this thread.
 
 ```_time:120d _stream:{channel_id="CGZF1H6L9", channel_name="general"} and thread_ts:1705467634.457089```
 
-Note:
+or you can use `id` to find the thread
 
-If you notice duplicated messages, it could indicate that the user edited a message that was originally written earlier.
+```_time:120d id:2c94a8f5c7aae30374990bfe55743b09f01ede62f613622f81895659168d0f75```
+
+Also it is possible to find message with the specific part of the text and use it `id` to find the thread
 
 ### How to get messages related to user
 

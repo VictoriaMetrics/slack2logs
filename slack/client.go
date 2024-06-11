@@ -2,12 +2,15 @@ package slack
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -21,6 +24,7 @@ import (
 
 const (
 	historicalRequestLimit = 500
+	joinedChannelMessage   = "has joined the channel"
 )
 
 var (
@@ -50,6 +54,7 @@ type Client struct {
 // Message represents a slack message
 // which would be sent to the additional service
 type Message struct {
+	ID                    string `json:"id"`
 	Type                  string `json:"type"`
 	User                  string `json:"user"`
 	Text                  string `json:"text"`
@@ -202,6 +207,10 @@ func (c *Client) handleEventMessage(ctx context.Context, event slackevents.Event
 			if _, ok := c.listeningChannels[ev.Channel]; !ok {
 				return fmt.Errorf("got message from unsupported channel id: %s", ev.Channel)
 			}
+			// skip messages like join channel
+			if strings.Contains(ev.Text, joinedChannelMessage) {
+				return nil
+			}
 			if ev.SubType == slack.MsgSubTypeMessageChanged {
 				ev.User = ev.Message.User
 				ev.Text = ev.Message.Text
@@ -230,7 +239,10 @@ func (c *Client) handleEventMessage(ctx context.Context, event slackevents.Event
 				return fmt.Errorf("fail to parse timestamp:%q: %s", ev.TimeStamp, err)
 			}
 
+			id := generateMessageID(threadTS)
+
 			m := Message{
+				ID:                    id,
 				Type:                  ev.Type,
 				User:                  ev.User,
 				Text:                  ev.Text,
@@ -410,4 +422,11 @@ func getBatchTimestamp(ev *slackevents.MessageEvent) string {
 		timestamp = ev.PreviousMessage.TimeStamp
 	}
 	return timestamp
+}
+
+func generateMessageID(threadTs string) string {
+	hash := sha256.New()
+	hash.Write([]byte(threadTs))
+	hashBytes := hash.Sum(nil)
+	return hex.EncodeToString(hashBytes)
 }
