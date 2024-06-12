@@ -16,7 +16,7 @@ import (
 	"github.com/VictoriaMetrics/metrics"
 
 	"slack2logs/auth"
-	"slack2logs/importer"
+	"slack2logs/transporter"
 )
 
 const jsonLinePath = "insert/jsonline"
@@ -80,7 +80,7 @@ func New() (*Client, error) {
 
 // Import make request to the VictoriaLogs server with
 // given message
-func (c *Client) Import(ctx context.Context, message importer.LogMessage) error {
+func (c *Client) Import(ctx context.Context, message transporter.Message) error {
 	messagesDeliveryCount.Inc()
 	var buf bytes.Buffer
 	err := json.NewEncoder(&buf).Encode(message)

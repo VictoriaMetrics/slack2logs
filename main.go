@@ -13,8 +13,8 @@ import (
 	"slack2logs/envflag"
 	"slack2logs/flagutil"
 	"slack2logs/httpserver"
-	"slack2logs/importer"
 	"slack2logs/slack"
+	"slack2logs/transporter"
 	"slack2logs/vmlogs"
 )
 
@@ -40,7 +40,7 @@ func main() {
 		log.Fatalf("error initialize VictoriaLogs client: %s", err)
 	}
 
-	processor := importer.New(slackClient, logs)
+	trp := transporter.New(slackClient, logs)
 
 	go httpserver.Serve()
 
@@ -53,7 +53,7 @@ func main() {
 		cancel()
 	}()
 
-	processor.Run(ctx)
+	trp.Run(ctx)
 
 	err = httpserver.Stop()
 	if err != nil {

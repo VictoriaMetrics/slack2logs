@@ -20,11 +20,12 @@ import (
 	"github.com/slack-go/slack/socketmode"
 
 	"slack2logs/flagutil"
+	"slack2logs/transporter"
 )
 
 const (
 	historicalRequestLimit = 500
-	joinedChannelMessage   = "has joined the channel"
+	joinedChannelMessage   = "> has joined the channel"
 	idLength               = 10
 )
 
@@ -44,28 +45,12 @@ var (
 // Client represents slack client
 type Client struct {
 	socketClient      *socketmode.Client
-	messageC          chan Message
+	messageC          chan transporter.Message
 	threadC           chan ThreadRequest
 	listeningChannels map[string]struct{}
 
 	mx    sync.Mutex
 	batch Messages
-}
-
-// Message represents a slack message
-// which would be sent to the additional service
-type Message struct {
-	ThreadID              string `json:"thread_id"`
-	Type                  string `json:"type"`
-	User                  string `json:"user"`
-	Text                  string `json:"text"`
-	ThreadTimeStamp       string `json:"thread_ts"`
-	TimeStamp             string `json:"ts"`
-	ChannelID             string `json:"channel_id"`
-	ChannelName           string `json:"channel_name"`
-	UserID                string `json:"user_id"`
-	DisplayName           string `json:"display_name"`
-	DisplayNameNormalized string `json:"display_name_normalized"`
 }
 
 // ThreadRequest represents request for getting
@@ -75,7 +60,7 @@ type ThreadRequest struct {
 	Timestamp string
 }
 
-type Messages map[string]Message
+type Messages map[string]transporter.Message
 
 func New() *Client {
 	if len(*listeningChannels) == 0 {
@@ -92,7 +77,7 @@ func New() *Client {
 
 	c := Client{
 		socketClient:      socketClient,
-		messageC:          make(chan Message, 1),
+		messageC:          make(chan transporter.Message, 1),
 		threadC:           make(chan ThreadRequest, 1),
 		listeningChannels: make(map[string]struct{}, len(*listeningChannels)),
 		batch:             make(Messages),
@@ -122,7 +107,7 @@ func (c *Client) RunHistoricalBackfilling(ctx context.Context) error {
 }
 
 // Export sends slack message to the additional service via callback
-func (c *Client) Export(ctx context.Context, cb func(m Message)) {
+func (c *Client) Export(ctx context.Context, cb func(m transporter.Message)) {
 	ticker := time.NewTicker(*batchFlushInterval)
 	defer ticker.Stop()
 	for {
@@ -142,7 +127,7 @@ func (c *Client) Export(ctx context.Context, cb func(m Message)) {
 	}
 }
 
-func (c *Client) flush(cb func(m Message)) {
+func (c *Client) flush(cb func(m transporter.Message)) {
 	if len(c.batch) == 0 {
 		return
 	}
@@ -209,7 +194,7 @@ func (c *Client) handleEventMessage(ctx context.Context, event slackevents.Event
 				return fmt.Errorf("got message from unsupported channel id: %s", ev.Channel)
 			}
 			// skip messages like join channel
-			if strings.Contains(ev.Text, joinedChannelMessage) {
+			if filterOutLogMessage(ev.Text) {
 				return nil
 			}
 			if ev.SubType == slack.MsgSubTypeMessageChanged {
@@ -242,7 +227,7 @@ func (c *Client) handleEventMessage(ctx context.Context, event slackevents.Event
 
 			id := generateMessageID(threadTS)
 
-			m := Message{
+			m := transporter.Message{
 				ThreadID:              id,
 				Type:                  ev.Type,
 				User:                  ev.User,
@@ -334,7 +319,7 @@ func (c *Client) collectHistoricalMessages(ctx context.Context) {
 					if m.ThreadTimestamp == "" {
 						m.ThreadTimestamp = m.Timestamp
 					}
-					c.messageC <- Message{
+					c.messageC <- transporter.Message{
 						Type:                  m.Type,
 						User:                  m.User,
 						Text:                  m.Text,
@@ -396,7 +381,7 @@ func (c *Client) collectThreadMessages(ctx context.Context) {
 					log.Printf("fail to parse timestamp:%q: %s", rp.Timestamp, err)
 					continue
 				}
-				c.messageC <- Message{
+				c.messageC <- transporter.Message{
 					Type:                  rp.Type,
 					User:                  rp.User,
 					Text:                  rp.Text,
@@ -432,4 +417,9 @@ func generateMessageID(threadTs string) string {
 	encoded := hex.EncodeToString(hashBytes)
 	id := encoded[:idLength]
 	return id
+}
+
+func filterOutLogMessage(msg string) bool {
+	// filter out "user joined Slack channel messages", msg example "<@U0787V2AW9W> has joined the channel"
+	return strings.HasSuffix(msg, joinedChannelMessage)
 }
